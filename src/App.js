@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Sparkles, Zap, Code, Rocket, Check, Menu, X, Settings, Edit3, Play, Download, Share2, Database, Cloud, Lock, Users, Bell, BarChart, FileCode, Palette, Layers, GitBranch, MessageCircle, Brain, Sun, Moon, Copy, Terminal, Globe, Shield, Cpu, Box, Workflow } from 'lucide-react';
+import { supabase } from './supabase';
+import { Sparkles, Zap, Code, Rocket, Check, Menu, X, Settings, Edit3, Play, Download, Share2, Database, Cloud, Lock, Users, Bell, BarChart, FileCode, Palette, Layers, GitBranch, MessageCircle, Brain, Sun, Moon, Copy, Terminal, Globe, Shield, Cpu, Workflow } from 'lucide-react';
 
 export default function AIAppBuilder() {
   const [description, setDescription] = useState('');
@@ -20,7 +21,7 @@ export default function AIAppBuilder() {
   const [chatInput, setChatInput] = useState('');
   const [isAIChatting, setIsAIChatting] = useState(false);
   const [dailyQuestions, setDailyQuestions] = useState(0);
-  const [questionsLimit] = useState(10);
+  const [questionsLimit] = useState(5);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
 
   const aiModels = [
@@ -31,43 +32,26 @@ export default function AIAppBuilder() {
     { id: 'gemini', name: 'Gemini', icon: '💎', color: 'from-indigo-500 to-blue-500' }
   ];
 
-const handleGenerate = async () => {
-  if (description.trim() && credits >= 40) {
-    setIsGenerating(true);
-    
-    try {
-      const response = await fetch('http://localhost:3001/api/generate-app', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          description: description,
-          userId: 1 // Mock user ID for now
-        })
-      });
-      
-      const data = await response.json();
-      
-      if (data.success) {
+  const handleGenerate = () => {
+    if (description.trim() && credits >= 40) {
+      setIsGenerating(true);
+      setTimeout(() => {
         const newApp = {
           id: Date.now(),
           description: description,
           createdAt: new Date().toLocaleString(),
           status: 'ready',
-          code: data.code
+          edits: 0
         };
         setGeneratedApps([newApp, ...generatedApps]);
         setCredits(credits - 40);
+        setIsGenerating(false);
         setShowPreview(true);
         setDescription('');
-      }
-    } catch (error) {
-      console.error('Error generating app:', error);
-      alert('Failed to generate app. Please try again.');
-    } finally {
-      setIsGenerating(false);
+      }, 3500);
     }
-  }
-};
+  };
+
   const handleEdit = () => {
     if (editDescription.trim() && credits >= 1) {
       setIsGenerating(true);
@@ -81,43 +65,35 @@ const handleGenerate = async () => {
     }
   };
 
-const handleAIChat = async () => {
-  if (dailyQuestions >= questionsLimit) {
-    setShowUpgradeModal(true);
-    return;
-  }
-  
-  if (chatInput.trim()) {
-    const userMessage = { role: 'user', content: chatInput };
-    setChatMessages([...chatMessages, userMessage]);
-    setChatInput('');
-    setIsAIChatting(true);
-    setDailyQuestions(dailyQuestions + 1);
-
-    try {
-      const response = await fetch('http://localhost:3001/api/ai-chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          message: chatInput,
-          aiModel: selectedAI,
-          userId: 1
-        })
-      });
-      
-      const data = await response.json();
-      
-      if (data.success) {
-        const aiMessage = { role: 'assistant', content: data.response };
-        setChatMessages(prev => [...prev, aiMessage]);
-      }
-    } catch (error) {
-      console.error('AI chat error:', error);
-    } finally {
-      setIsAIChatting(false);
+  const handleAIChat = () => {
+    if (dailyQuestions >= questionsLimit) {
+      setShowUpgradeModal(true);
+      return;
     }
-  }
-};
+    
+    if (chatInput.trim()) {
+      const userMessage = { role: 'user', content: chatInput };
+      setChatMessages([...chatMessages, userMessage]);
+      setChatInput('');
+      setIsAIChatting(true);
+      setDailyQuestions(dailyQuestions + 1);
+
+      setTimeout(() => {
+        const aiResponses = {
+          claude: "I'd be happy to help you brainstorm! For a great app, consider: What problem does it solve? Who are your users? Start with a simple MVP. For example, if you want a productivity app, you could build a task manager with categories, deadlines, and progress tracking. What area interests you most?",
+          gpt4: "Great question! Let's think about your target audience first. Are you building for businesses, consumers, or developers? Some trending ideas: AI-powered tools, automation platforms, or niche marketplaces. What's your background or passion?",
+          grok: "Let's get creative! 🚀 Think about daily frustrations you face. The best apps solve real problems. Consider: scheduling tools, community platforms, learning apps, or productivity boosters. What's bugging you lately that tech could fix?",
+          deepseek: "I'll help you discover the perfect app idea! Consider these categories: 1) SaaS tools 2) Mobile utilities 3) Social platforms 4) E-commerce 5) Educational apps. Which resonates with you? We can deep-dive from there.",
+          gemini: "Excellent! Let's explore together. Popular app types: dashboards, booking systems, content platforms, analytics tools, or social networks. What's your skill level? Are you looking for B2B or B2C? Tell me more!"
+        };
+        
+        const aiMessage = { role: 'assistant', content: aiResponses[selectedAI] };
+        setChatMessages(prev => [...prev, aiMessage]);
+        setIsAIChatting(false);
+      }, 1500);
+    }
+  };
+
   const useAIIdea = () => {
     if (chatMessages.length > 0) {
       const lastUserMessage = chatMessages.filter(m => m.role === 'user').pop();
@@ -136,6 +112,48 @@ const handleAIChat = async () => {
 
   return (
     <div className={`min-h-screen ${bgClass} transition-colors duration-300`}>
+      {/* Upgrade Modal */}
+      {showUpgradeModal && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
+          <div className={`${cardBgClass} rounded-2xl p-8 max-w-md shadow-2xl border-2 ${borderClass}`}>
+            <h3 className={`text-2xl font-bold mb-4 ${textClass}`}>Daily Limit Reached! 🎯</h3>
+            <p className={`mb-4 ${subTextClass}`}>You've used your <strong>5 free AI questions</strong> today!</p>
+            <div className={`p-4 ${darkMode ? 'bg-blue-900/30' : 'bg-blue-50'} rounded-xl mb-6`}>
+              <p className={`text-lg font-bold ${darkMode ? 'text-blue-300' : 'text-blue-900'}`}>
+                Unlock 20 more questions for just <span className="text-orange-600">8 credits</span>
+              </p>
+              <p className={`text-sm ${darkMode ? 'text-blue-400' : 'text-blue-700'} mt-1`}>
+                That's only 0.4 credits per question!
+              </p>
+            </div>
+            <div className="flex gap-3">
+              <button 
+                onClick={() => {
+                  if (credits >= 8) {
+                    setCredits(credits - 8);
+                    setDailyQuestions(0);
+                    setShowUpgradeModal(false);
+                    alert('✅ Unlocked! You now have 20 more questions today.');
+                  } else {
+                    alert('❌ Insufficient credits! Please upgrade your plan.');
+                  }
+                }}
+                disabled={credits < 8}
+                className="flex-1 py-3 bg-gradient-to-r from-orange-600 to-pink-600 text-white rounded-xl font-bold hover:shadow-lg transition disabled:opacity-50"
+              >
+                Unlock (8 credits)
+              </button>
+              <button 
+                onClick={() => setShowUpgradeModal(false)}
+                className={`flex-1 py-3 border-2 ${borderClass} ${textClass} rounded-xl font-semibold hover:bg-gray-50 transition`}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <header className={`${darkMode ? 'bg-gray-800/90' : 'bg-white/90'} backdrop-blur-md border-b ${borderClass} sticky top-0 z-50 shadow-sm transition-colors duration-300`}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
@@ -145,7 +163,7 @@ const handleAIChat = async () => {
                 <Sparkles className="w-6 h-6 text-white" />
               </div>
               <div>
-                <span className={`text-2xl font-bold bg-gradient-to-r from-yellow-600 via-orange-600 to-pink-600 bg-clip-text text-transparent`}>
+                <span className="text-2xl font-bold bg-gradient-to-r from-yellow-600 via-orange-600 to-pink-600 bg-clip-text text-transparent">
                   NexusForge
                 </span>
                 <p className={`text-xs ${subTextClass}`}>AI App Builder Pro</p>
@@ -200,9 +218,9 @@ const handleAIChat = async () => {
 
           {mobileMenuOpen && (
             <nav className="md:hidden mt-4 pb-4 flex flex-col gap-3">
-              <button onClick={() => setActiveTab('builder')} className={`text-left ${subTextClass} hover:text-orange-600 transition`}>Builder</button>
-              <button onClick={() => setActiveTab('apps')} className={`text-left ${subTextClass} hover:text-orange-600 transition`}>My Apps</button>
-              <button onClick={() => setActiveTab('templates')} className={`text-left ${subTextClass} hover:text-orange-600 transition`}>Templates</button>
+              <button onClick={() => { setActiveTab('builder'); setMobileMenuOpen(false); }} className={`text-left ${subTextClass} hover:text-orange-600 transition`}>Builder</button>
+              <button onClick={() => { setActiveTab('apps'); setMobileMenuOpen(false); }} className={`text-left ${subTextClass} hover:text-orange-600 transition`}>My Apps</button>
+              <button onClick={() => { setActiveTab('templates'); setMobileMenuOpen(false); }} className={`text-left ${subTextClass} hover:text-orange-600 transition`}>Templates</button>
               <a href="#pricing" className={`${subTextClass} hover:text-orange-600 transition`}>Pricing</a>
               <div className="flex items-center gap-3">
                 <button
@@ -223,14 +241,16 @@ const handleAIChat = async () => {
 
       {/* AI Assistant Chat Box */}
       {showAIAssistant && (
-        <div className="fixed bottom-6 left-6 z-50 w-96 max-w-[calc(100vw-3rem)] animate-in slide-in-from-left">
+        <div className="fixed bottom-6 left-6 z-50 w-96 max-w-[calc(100vw-3rem)] animate-in slide-in-from-left shadow-2xl">
           <div className={`${cardBgClass} rounded-2xl shadow-2xl border-2 ${darkMode ? 'border-gray-700' : 'border-orange-200'} overflow-hidden`}>
             <div className="bg-gradient-to-r from-yellow-500 via-orange-500 to-pink-500 p-4 flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <Brain className="w-6 h-6 text-white" />
                 <div>
                   <h3 className="font-bold text-white">AI Assistant</h3>
-                  <p className="text-xs text-white/80">Free consultation - No credits used!</p>
+                  <p className="text-xs text-white/90">
+                    {questionsLimit - dailyQuestions} free questions left today
+                  </p>
                 </div>
               </div>
               <button onClick={() => setShowAIAssistant(false)} className="text-white hover:bg-white/20 p-1 rounded transition">
@@ -264,7 +284,7 @@ const handleAIChat = async () => {
               {chatMessages.length === 0 ? (
                 <div className="text-center py-8">
                   <MessageCircle className={`w-12 h-12 ${subTextClass} mx-auto mb-3`} />
-                  <p className={`${subTextClass} text-sm`}>
+                  <p className={`${subTextClass} text-sm font-semibold`}>
                     Not sure what to build? Ask our AI for ideas!
                   </p>
                   <p className={`${subTextClass} text-xs mt-2`}>
@@ -334,7 +354,7 @@ const handleAIChat = async () => {
       {activeTab === 'builder' && !showPreview && (
         <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
           <div className="text-center mb-12">
-            <h1 className={`text-5xl sm:text-7xl font-bold mb-6 bg-gradient-to-r from-yellow-600 via-orange-600 to-pink-600 bg-clip-text text-transparent leading-tight`}>
+            <h1 className="text-5xl sm:text-7xl font-bold mb-6 bg-gradient-to-r from-yellow-600 via-orange-600 to-pink-600 bg-clip-text text-transparent leading-tight">
               Build Anything with AI
             </h1>
             <p className={`text-xl ${subTextClass} max-w-3xl mx-auto`}>
@@ -345,34 +365,32 @@ const handleAIChat = async () => {
           {/* Main Builder Card */}
           <div className={`${cardBgClass} rounded-3xl shadow-2xl p-8 mb-12 border-2 ${borderClass}`}>
             <div className="mb-6">
-              <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center justify-between mb-3 flex-wrap gap-3">
                 <label className={`block text-lg font-bold ${textClass}`}>
                   Describe Your App
                 </label>
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => setShowAIAssistant(!showAIAssistant)}
-                    className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-500 to-cyan-500 text-white rounded-lg text-sm font-semibold hover:shadow-lg transition"
-                  >
-                    <Brain className="w-4 h-4" />
-                    Need Help? Chat with AI (Free!)
-                  </button>
-                </div>
+                <button
+                  onClick={() => setShowAIAssistant(!showAIAssistant)}
+                  className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-500 to-cyan-500 text-white rounded-lg text-sm font-semibold hover:shadow-lg transition"
+                >
+                  <Brain className="w-4 h-4" />
+                  Need Help? Chat with AI (Free!)
+                </button>
               </div>
 
               {/* Helper Alert */}
               <div className={`mb-4 p-4 ${darkMode ? 'bg-blue-900/30 border-blue-700' : 'bg-blue-50 border-blue-200'} border-2 rounded-xl`}>
                 <p className={`text-sm ${darkMode ? 'text-blue-300' : 'text-blue-800'} flex items-center gap-2`}>
-                  <MessageCircle className="w-4 h-4" />
-                  <strong>Not sure what to build?</strong> Talk to our AI assistants first - it's completely free! Save your credits for when you're ready.
+                  <MessageCircle className="w-4 h-4 flex-shrink-0" />
+                  <strong>Not sure what to build?</strong> Talk to our AI assistants first - you get <strong>5 free questions daily</strong>, then 8 credits for 20 more!
                 </p>
               </div>
 
               <textarea
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                placeholder="Example: Build a full-stack e-commerce platform with user authentication, product catalog with search and filters, shopping cart, payment integration via Stripe, admin dashboard with analytics, order management system, and email notifications..."
-                className={`w-full h-56 p-5 border-2 ${darkMode ? 'border-gray-600 bg-gray-700 text-gray-100' : 'border-gray-300 bg-white'} rounded-2xl focus:border-orange-500 focus:outline-none resize-none text-lg shadow-sm`}
+                placeholder="Example: Build a full-stack e-commerce platform with user authentication, product catalog with search and filters, shopping cart, payment integration via Stripe, admin dashboard with analytics, order management system, and email notifications. Include responsive design, dark mode, and SEO optimization..."
+                className={`w-full h-56 p-5 border-2 ${darkMode ? 'border-gray-600 bg-gray-700 text-gray-100 placeholder-gray-400' : 'border-gray-300 bg-white'} rounded-2xl focus:border-orange-500 focus:outline-none resize-none text-lg shadow-sm`}
               />
               <div className={`mt-3 flex items-center justify-between text-sm ${subTextClass}`}>
                 <span>💡 Pro tip: Be detailed for best results</span>
@@ -393,7 +411,7 @@ const handleAIChat = async () => {
               </div>
               
               <button
-                onClick={WhandleGenerate}
+                onClick={handleGenerate}
                 disabled={!description.trim() || credits < 40 || isGenerating}
                 className="w-full lg:w-auto px-10 py-4 bg-gradient-to-r from-yellow-500 via-orange-500 to-pink-500 text-white rounded-xl font-bold text-lg hover:shadow-2xl disabled:opacity-50 disabled:cursor-not-allowed transition-all transform hover:scale-105 flex items-center justify-center gap-3 shadow-xl"
               >
@@ -412,7 +430,7 @@ const handleAIChat = async () => {
             </div>
           </div>
 
-          {/* NEW: Advanced Features Grid */}
+          {/* Advanced Features Grid */}
           <div id="features" className="mb-12">
             <h2 className={`text-3xl font-bold text-center mb-8 ${textClass}`}>Advanced Features</h2>
             <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -466,7 +484,7 @@ const handleAIChat = async () => {
                   </li>
                   <li className="flex items-start gap-3">
                     <Check className="w-5 h-5 text-green-500 flex-shrink-0 mt-1" />
-                    <span className={subTextClass}>Free AI consultation</span>
+                    <span className={subTextClass}>5 free AI questions daily</span>
                   </li>
                   <li className="flex items-start gap-3">
                     <Check className="w-5 h-5 text-green-500 flex-shrink-0 mt-1" />
@@ -501,11 +519,11 @@ const handleAIChat = async () => {
                   </li>
                   <li className="flex items-start gap-3">
                     <Check className="w-5 h-5 text-green-500 flex-shrink-0 mt-1" />
-                    <span className={subTextClass}>Priority AI processing</span>
+                    <span className={subTextClass}>Unlimited AI questions</span>
                   </li>
                   <li className="flex items-start gap-3">
                     <Check className="w-5 h-5 text-green-500 flex-shrink-0 mt-1" />
-                    <span className={subTextClass}>Advanced deployment options</span>
+                    <span className={subTextClass}>Priority AI processing</span>
                   </li>
                   <li className="flex items-start gap-3">
                     <Check className="w-5 h-5 text-green-500 flex-shrink-0 mt-1" />
@@ -541,10 +559,6 @@ const handleAIChat = async () => {
                   </li>
                   <li className="flex items-start gap-3">
                     <Check className="w-5 h-5 text-green-500 flex-shrink-0 mt-1" />
-                    <span className={subTextClass}>Collaboration tools</span>
-                  </li>
-                  <li className="flex items-start gap-3">
-                    <Check className="w-5 h-5 text-green-500 flex-shrink-0 mt-1" />
                     <span className={subTextClass}>White-label options</span>
                   </li>
                   <li className="flex items-start gap-3">
@@ -561,7 +575,7 @@ const handleAIChat = async () => {
         </main>
       )}
 
-      {/* Templates Tab - NEW */}
+      {/* Templates Tab */}
       {activeTab === 'templates' && (
         <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
           <h2 className={`text-4xl font-bold mb-4 ${textClass}`}>App Templates</h2>
@@ -601,10 +615,10 @@ const handleAIChat = async () => {
           {generatedApps.length === 0 ? (
             <div className={`${cardBgClass} rounded-2xl p-12 text-center border-2 ${borderClass}`}>
               <Code className={`w-16 h-16 ${subTextClass} mx-auto mb-4`} />
-              <p className={`${subTextClass} text-lg`}>No apps generated yet. Start building!</p>
+              <p className={`${subTextClass} text-lg mb-4`}>No apps generated yet. Start building!</p>
               <button 
                 onClick={() => setActiveTab('builder')}
-                className="mt-4 px-6 py-3 bg-gradient-to-r from-orange-500 to-pink-500 text-white rounded-lg font-semibold hover:shadow-lg transition"
+                className="px-6 py-3 bg-gradient-to-r from-orange-500 to-pink-500 text-white rounded-lg font-semibold hover:shadow-lg transition"
               >
                 Create Your First App
               </button>
@@ -622,7 +636,10 @@ const handleAIChat = async () => {
                   <h3 className={`font-bold text-lg mb-2 line-clamp-1 ${textClass}`}>{app.description.substring(0, 50)}...</h3>
                   <p className={`text-sm ${subTextClass} mb-4`}>Created: {app.createdAt}</p>
                   <div className="flex gap-2">
-                    <button className="flex-1 py-2 bg-gradient-to-r from-orange-500 to-pink-500 text-white rounded-lg text-sm font-semibold hover:shadow-lg transition flex items-center justify-center gap-1">
+                    <button 
+                      onClick={() => setShowPreview(true)}
+                      className="flex-1 py-2 bg-gradient-to-r from-orange-500 to-pink-500 text-white rounded-lg text-sm font-semibold hover:shadow-lg transition flex items-center justify-center gap-1"
+                    >
                       <Play className="w-4 h-4" />
                       Open
                     </button>
@@ -638,7 +655,7 @@ const handleAIChat = async () => {
       )}
 
       {/* Preview/Edit Mode */}
-      {showPreview && activeTab === 'builder' && (
+      {showPreview && (
         <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className={`${cardBgClass} rounded-3xl shadow-2xl p-8 border-2 ${borderClass}`}>
             <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-6 gap-4">
@@ -650,6 +667,7 @@ const handleAIChat = async () => {
                 onClick={() => {
                   setShowPreview(false);
                   setEditMode(false);
+                  setActiveTab('builder');
                 }}
                 className="px-6 py-3 bg-gradient-to-r from-yellow-500 via-orange-500 to-pink-500 text-white rounded-xl font-semibold hover:shadow-lg transition"
               >
@@ -669,7 +687,7 @@ const handleAIChat = async () => {
             {/* Edit Section */}
             {!editMode ? (
               <div className={`mb-6 p-5 ${darkMode ? 'bg-purple-900/30 border-purple-700' : 'bg-purple-50 border-purple-200'} border-2 rounded-xl`}>
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between flex-wrap gap-4">
                   <div>
                     <p className={`font-bold ${darkMode ? 'text-purple-300' : 'text-purple-900'} mb-1`}>Want to make changes?</p>
                     <p className={`text-sm ${darkMode ? 'text-purple-400' : 'text-purple-700'}`}>Edit your app for just 1 credit per modification</p>
@@ -692,7 +710,7 @@ const handleAIChat = async () => {
                   placeholder="Example: Add a dark mode toggle, change primary color to blue, add user profile dropdown..."
                   className={`w-full h-32 p-4 border-2 ${darkMode ? 'border-purple-600 bg-gray-700 text-gray-100' : 'border-purple-300'} rounded-xl focus:border-purple-500 focus:outline-none resize-none mb-3`}
                 />
-                <div className="flex gap-3">
+                <div className="flex gap-3 flex-wrap">
                   <button
                     onClick={handleEdit}
                     disabled={!editDescription.trim() || credits < 1 || isGenerating}
@@ -772,7 +790,7 @@ const handleAIChat = async () => {
                     <Rocket className="w-5 h-5" />
                     Deploy to Production
                   </button>
-                  <button className="px-8 py-4 border-2 border-orange-600 text-orange-600 rounded-xl font-bold hover:bg-orange-50 transition flex items-center gap-2 text-lg">
+                  <button className={`px-8 py-4 border-2 ${borderClass} ${textClass} rounded-xl font-bold hover:bg-orange-50 transition flex items-center gap-2 text-lg`}>
                     <Play className="w-5 h-5" />
                     Preview Live
                   </button>
@@ -821,7 +839,7 @@ const handleAIChat = async () => {
       )}
 
       {/* Footer */}
-      <footer className={`mt-20 py-12 border-t ${borderClass} ${darkMode ? 'bg-gray-800/70' : 'bg-white/70'} backdrop-blur-sm`}>
+      <footer className={`mt-20 py-12 border-t ${borderClass} ${darkMode ? 'bg-gray-800/70' : 'bg-white/70'} backdrop-blur-sm transition-colors duration-300`}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid md:grid-cols-4 gap-8 mb-8">
             <div>
@@ -875,3 +893,4 @@ const handleAIChat = async () => {
     </div>
   );
 }
+	
