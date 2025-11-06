@@ -19,6 +19,9 @@ export default function AIAppBuilder() {
   const [chatMessages, setChatMessages] = useState([]);
   const [chatInput, setChatInput] = useState('');
   const [isAIChatting, setIsAIChatting] = useState(false);
+  const [dailyQuestions, setDailyQuestions] = useState(0);
+  const [questionsLimit] = useState(10);
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
 
   const aiModels = [
     { id: 'claude', name: 'Claude', icon: '🧠', color: 'from-amber-500 to-orange-500' },
